@@ -24,7 +24,7 @@ jobs:
       ConnectionStrings__Postgres: "Host=localhost;Port=5432;Database=taskflow;Username=postgres;Password=284228"
       JWT_SECRET: ci-only-secret-value-that-is-long-enough-32b
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "9.0.x"
@@ -47,7 +47,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
