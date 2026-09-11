@@ -5,6 +5,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Prompt templates are embedded into the assembly (not copy-to-output) so they load
+         reliably regardless of which project (Api, DbRunner, test projects) hosts them. -->
+    <EmbeddedResource Include="AI\Prompts\*.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.14" />
     <PackageReference Include="Hangfire.Core" Version="1.8.14" />
     <PackageReference Include="Hangfire.PostgreSql" Version="1.20.10" />

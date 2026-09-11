@@ -244,4 +244,7 @@ public class UserRepository : IUserRepository
 
     public async Task AddStatusChangeAsync(UserStatusChangeEntity change, CancellationToken ct) =>
         await _db.UserStatusChanges.AddAsync(change, ct);
+
+    public async Task<IReadOnlyList<Guid>> GetActiveUserIdsAsync(CancellationToken ct) =>
+        await _db.Users.AsNoTracking().Where(u => u.IsActive).Select(u => u.Id).ToListAsync(ct);
 }

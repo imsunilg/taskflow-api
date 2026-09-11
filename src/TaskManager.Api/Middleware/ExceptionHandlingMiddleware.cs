@@ -1,4 +1,5 @@
 using System.Text.Json;
+using TaskManager.Application.AI;
 using TaskManager.Application.Common;
 using TaskManager.Domain.Common;
 using ValidationException = TaskManager.Application.Common.ValidationException;
@@ -45,6 +46,15 @@ public class ExceptionHandlingMiddleware
             NotFoundException n => (StatusCodes.Status404NotFound, n.Message, new List<ApiErrorItem>()),
             ForbiddenException f => (StatusCodes.Status403Forbidden, f.Message, new List<ApiErrorItem>()),
             DomainException d => (StatusCodes.Status400BadRequest, d.Message, new List<ApiErrorItem>()),
+            AIQuotaExceededException q => (StatusCodes.Status429TooManyRequests, q.Message, new List<ApiErrorItem>()),
+            AIServiceUnavailableException u => (
+                StatusCodes.Status503ServiceUnavailable,
+                "The AI assistant is temporarily unavailable. Please try again shortly, or continue without it.",
+                new List<ApiErrorItem>()),
+            AIServiceException => (
+                StatusCodes.Status502BadGateway,
+                "The AI assistant could not process that request. Please try rephrasing, or continue without it.",
+                new List<ApiErrorItem>()),
             _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.", new List<ApiErrorItem>()),
         };
 

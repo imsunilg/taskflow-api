@@ -80,6 +80,21 @@ public interface IUserRepository
     Task<bool> EmailExistsAsync(string email, Guid? excludeId, CancellationToken ct);
     Task<UserEntity?> GetByIdIncludingDeletedAsync(Guid id, CancellationToken ct);
     Task AddStatusChangeAsync(UserStatusChangeEntity change, CancellationToken ct);
+
+    /// <summary>Every active, non-deleted user id — used to fan the AI morning-plan/evening-summary jobs out.</summary>
+    Task<IReadOnlyList<Guid>> GetActiveUserIdsAsync(CancellationToken ct);
+}
+
+public interface IAiRepository
+{
+    /// <summary>Every user currently has exactly one running conversation thread; created on first use.</summary>
+    Task<AiConversationEntity> GetOrCreateConversationAsync(Guid userId, CancellationToken ct);
+    Task<IReadOnlyList<AiMessageEntity>> GetRecentMessagesAsync(Guid conversationId, int take, CancellationToken ct);
+    Task AddMessageAsync(AiMessageEntity message, CancellationToken ct);
+    Task AddUsageAsync(AiUsageEntity usage, CancellationToken ct);
+    Task<int> CountUsageSinceAsync(Guid userId, DateTime sinceUtc, CancellationToken ct);
+    Task UpsertDailyPlanAsync(AiDailyPlanEntity plan, CancellationToken ct);
+    Task<AiDailyPlanEntity?> GetDailyPlanAsync(Guid userId, DateOnly date, CancellationToken ct);
 }
 
 public interface IPasswordResetRepository

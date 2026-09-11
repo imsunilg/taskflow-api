@@ -32,6 +32,10 @@ public class TaskManagerDbContext : DbContext, IUnitOfWork
     public DbSet<TaskHistoryEntity> TaskHistory => Set<TaskHistoryEntity>();
     public DbSet<AttachmentEntity> Attachments => Set<AttachmentEntity>();
     public DbSet<TaskCommentEntity> TaskComments => Set<TaskCommentEntity>();
+    public DbSet<AiConversationEntity> AiConversations => Set<AiConversationEntity>();
+    public DbSet<AiMessageEntity> AiMessages => Set<AiMessageEntity>();
+    public DbSet<AiUsageEntity> AiUsage => Set<AiUsageEntity>();
+    public DbSet<AiDailyPlanEntity> AiDailyPlans => Set<AiDailyPlanEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

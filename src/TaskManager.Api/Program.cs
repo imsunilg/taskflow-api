@@ -174,6 +174,19 @@ builder.Services.AddRateLimiter(options =>
         o.Window = TimeSpan.FromMinutes(1);
         o.QueueLimit = 0;
     });
+    // Per-minute burst guard for /api/ai/*. The per-user daily cap (Gemini:DailyRequestCap,
+    // enforced by AiUsageLoggingBehavior) is the primary quota; this just smooths bursts.
+    options.AddPolicy("ai", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.User?.FindFirst("sub")?.Value
+                ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? "anonymous",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
     // Brute-force protection for sensitive auth actions (e.g. change-password's
     // current-password check). Partitioned by user id, falling back to client IP.
     options.AddPolicy("sensitive", httpContext =>
@@ -250,6 +263,12 @@ using (var startupScope = app.Services.CreateScope())
     {
         app.Logger.LogWarning("CAPTCHA is disabled outside Development — forgot-password requests will be rejected.");
     }
+
+    var gemini = startupScope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<TaskManager.Infrastructure.AI.GeminiOptions>>().Value;
+    app.Logger.LogInformation(
+        "AI (Gemini): {State}. Model: {Model}.",
+        gemini.IsConfigured ? "configured" : "NOT configured (all /api/ai/* endpoints will return 503 until Gemini:ApiKey is set)",
+        gemini.Model);
 }
 
 app.UseSwagger();
@@ -297,6 +316,16 @@ RecurringJob.AddOrUpdate<ReminderDeliveryJob>(
     "reminder-delivery",
     job => job.RunAsync(CancellationToken.None),
     Cron.Minutely);
+
+RecurringJob.AddOrUpdate<TaskManager.Infrastructure.BackgroundJobs.AiMorningPlanJob>(
+    "ai-morning-daily-plan",
+    job => job.RunAsync(CancellationToken.None),
+    Cron.Daily(7, 0));
+
+RecurringJob.AddOrUpdate<TaskManager.Infrastructure.BackgroundJobs.AiEveningSummaryJob>(
+    "ai-evening-summary",
+    job => job.RunAsync(CancellationToken.None),
+    Cron.Daily(20, 0));
 
 // One bootstrap path shared with TaskManager.DbRunner: migrate (dev — prod migrates as a
 // deploy step / via the DbRunner), seed the baseline Admin, and seed demo data only when it

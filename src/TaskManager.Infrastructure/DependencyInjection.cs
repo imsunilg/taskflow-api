@@ -4,9 +4,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
 using Polly;
+using Polly.CircuitBreaker;
 using Polly.Extensions.Http;
+using TaskManager.Application.AI;
 using TaskManager.Application.Common;
 using TaskManager.Application.Interfaces;
+using TaskManager.Infrastructure.AI;
 using TaskManager.Infrastructure.Caching;
 using TaskManager.Infrastructure.Identity;
 using TaskManager.Infrastructure.NLP;
@@ -37,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<IVoiceRecordingRepository, VoiceRecordingRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IPasswordResetRepository, PasswordResetRepository>();
+        services.AddScoped<IAiRepository, AiRepository>();
 
         services.AddScoped<IRecurrenceService, RecurrenceService>();
         services.AddScoped<ITaskFieldExtractor, SimpleTaskFieldExtractor>();
@@ -97,6 +101,19 @@ public static class DependencyInjection
 
         services.AddScoped<BackgroundJobs.ReminderDeliveryJob>();
 
+        // --- AI (Gemini) ---
+        // ApiKey must come from `dotnet user-secrets set "Gemini:ApiKey" "..."` in Development or
+        // the Gemini__ApiKey environment variable elsewhere — appsettings*.json only ever carries
+        // placeholders for the other, non-secret fields.
+        services.Configure<GeminiOptions>(config.GetSection("Gemini"));
+        services.Configure<AiQuotaOptions>(config.GetSection("Gemini"));
+        services.AddHttpClient<GeminiClient>()
+            .AddPolicyHandler(GeminiRetryPolicy())
+            .AddPolicyHandler(CircuitBreakerPolicy());
+        services.AddScoped<IAIService, GeminiAIService>();
+        services.AddScoped<BackgroundJobs.AiMorningPlanJob>();
+        services.AddScoped<BackgroundJobs.AiEveningSummaryJob>();
+
         return services;
     }
 
@@ -105,4 +122,17 @@ public static class DependencyInjection
             .HandleTransientHttpError()
             .OrResult(r => r.StatusCode == HttpStatusCode.RequestTimeout)
             .WaitAndRetryAsync(3, attempt => TimeSpan.FromMilliseconds(200 * Math.Pow(2, attempt)));
+
+    private static IAsyncPolicy<HttpResponseMessage> GeminiRetryPolicy() =>
+        HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .OrResult(r => r.StatusCode == HttpStatusCode.TooManyRequests)
+            .WaitAndRetryAsync(2, attempt => TimeSpan.FromMilliseconds(300 * Math.Pow(2, attempt)));
+
+    /// <summary>Gemini-specific: after the 2 retries above still fail 5 times in a row, trip for 30s.</summary>
+    private static IAsyncPolicy<HttpResponseMessage> CircuitBreakerPolicy() =>
+        HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .OrResult(r => r.StatusCode == HttpStatusCode.TooManyRequests)
+            .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30));
 }
