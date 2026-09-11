@@ -9,7 +9,7 @@ namespace TaskManager.Infrastructure.AI;
 public class GeminiOptions
 {
     public string ApiKey { get; set; } = string.Empty;
-    public string Model { get; set; } = "gemini-2.5-flash";
+    public string Model { get; set; } = "gemini-flash-latest";
     public int TimeoutSeconds { get; set; } = 15;
     public int MaxOutputTokens { get; set; } = 2048;
     public string BaseUrl { get; set; } = "https://generativelanguage.googleapis.com/v1beta/models/";

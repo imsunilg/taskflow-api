@@ -143,7 +143,7 @@ public class GeminiClient
                 "The Gemini API key is not configured on the server (Gemini:ApiKey / Gemini__ApiKey).");
         }
 
-        var url = $"{_options.BaseUrl.TrimEnd('/')}/{_options.Model}:generateContent?key={Uri.EscapeDataString(_options.ApiKey)}";
+        var url = $"{_options.BaseUrl.TrimEnd('/')}/{_options.Model}:generateContent";
 
         HttpResponseMessage response;
         try
@@ -152,6 +152,8 @@ public class GeminiClient
             {
                 Content = new StringContent(body.ToJsonString(), System.Text.Encoding.UTF8, "application/json"),
             };
+            // Key goes in a header, not the query string, so it never lands in server access logs or the URL itself.
+            request.Headers.Add("x-goog-api-key", _options.ApiKey);
             response = await _http.SendAsync(request, ct);
         }
         catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
